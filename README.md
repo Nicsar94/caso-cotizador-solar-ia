@@ -1,21 +1,21 @@
 # Cotizador solar con OCR + LLMs: de horas a minutos por cotización
 
-> Case study de un sistema en producción para [Solarbosch](https://solarbosch.cl), empresa instaladora solar chilena. El código no es público; este repo documenta el problema, la arquitectura y los resultados.
+> **Case study** · Sistema en producción para [Solarbosch](https://solarbosch.cl), empresa instaladora solar chilena. El código no es público; este repo documenta el problema, la arquitectura y los resultados.
 
 ## El problema
 
-Para cotizar un proyecto solar residencial, un ejecutivo comercial tenía que:
+Cotizar un proyecto solar residencial exigía que un ejecutivo comercial:
 
-1. Pedirle al cliente su boleta de electricidad en PDF (a veces las 12 del año).
-2. Leer y transcribir a mano el consumo histórico, la tarifa, la potencia y los datos del cliente.
-3. Dimensionar el sistema fotovoltaico en una planilla.
-4. Armar la presentación de la cotización con los gráficos de consumo y generación.
+1. Pidiera al cliente su boleta de electricidad (PDF, a veces 12 boletas de un año completo).
+2. Leyera y transcribiera a mano el consumo histórico, tarifa, potencia y datos del cliente.
+3. Dimensionara el sistema fotovoltaico en una planilla.
+4. Armara la presentación de la cotización con gráficos de consumo y generación.
 
 El proceso completo tomaba horas por cliente y los errores de transcripción eran frecuentes. Además, cada distribuidora chilena (Enel, CGE, Energía de Casablanca, etc.) usa un formato de boleta distinto, y algunas ni siquiera imprimen los números sobre el gráfico de consumo.
 
 ## La solución
 
-Un pipeline que extrae los datos, dimensiona y genera la cotización, operado desde un menú dentro de la misma planilla que el ejecutivo ya usaba:
+Pipeline automático de extracción + dimensionamiento + generación de cotización, operado desde un menú dentro de la propia planilla del ejecutivo:
 
 ```mermaid
 flowchart LR
@@ -32,10 +32,10 @@ flowchart LR
 
 Cómo funciona por dentro:
 
-- Una sola llamada de clasificación decide el flujo según el tipo de boleta. Los formatos difíciles (gráficos de barras sin números) se resuelven pidiéndole al LLM que lea la altura de las barras contra el eje Y.
-- Las reglas de negocio viven en un documento versionado: cómo deduplicar meses repetidos entre boletas, cómo calcular el valor del kWh (sumando todos los cargos que precisan kWh, no solo el cargo por energía) y la regla de nunca escribir un 0 cuando una boleta no se pudo leer. Ese documento es la referencia obligada antes de tocar el sistema.
-- El alta de clientes es automática: un webhook desde el CRM (GoHighLevel) clona la planilla plantilla completa, con fórmulas, gráficos y script incluidos, y crea la estructura de carpetas del cliente en Google Workspace.
-- El sistema trae su propio diagnóstico: funciones de auto-test que validan la captura de gráficos y vuelcan la especificación real de cada uno, porque lo que muestra la interfaz de Sheets no siempre coincide con lo que persiste la API.
+- **Árbol de decisiones por tipo de boleta:** una sola llamada de clasificación decide el flujo; los formatos "difíciles" (gráficos de barras sin números) se resuelven pidiendo al LLM leer las barras contra el eje Y.
+- **Reglas de extracción como fuente de verdad:** las reglas de negocio (deduplicación de meses, cálculo del valor kWh sumando todos los cargos con kWh precisado, "nunca escribir un 0 silencioso") viven en un documento de reglas versionado que el equipo y los agentes de IA consultan antes de tocar el sistema.
+- **Alta de clientes sin intervención humana:** un webhook desde el CRM (GoHighLevel) clona la planilla-plantilla completa (fórmulas + gráficos + script embebido) y crea la estructura de carpetas del cliente en Google Workspace.
+- **Herramientas de diagnóstico:** funciones de auto-test que validan la captura de gráficos y vuelcan las especificaciones reales de cada gráfico, para detectar drift entre lo que muestra la UI y lo que persiste la API.
 
 ## Resultados
 
